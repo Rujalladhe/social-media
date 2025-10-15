@@ -1,3 +1,4 @@
+// server.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -9,11 +10,10 @@ const logger = require("./utils/logger");
 const { connectToRabbitMQ, consumeEvent } = require("./utils/rabbitmq");
 const { handlePostDel } = require("./eventHandlers/media-event-handlers");
 
-
 const app = express();
 const PORT = process.env.PORT || 3003;
 
-//connect to mongodb
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URL)
   .then(() => logger.info("Connected to mongodb"))
@@ -21,38 +21,34 @@ mongoose
 
 app.use(cors());
 app.use(helmet());
-
-// Mount media routes BEFORE JSON parser so multipart/form-data isn't intercepted
 app.use("/api/media", mediaRoutes);
-
-// JSON parser for non-multipart routes (increase limit for safety)
 app.use(express.json({ limit: "10mb" }));
-
-app.use((req, res, next) => {
-  logger.info(`Received ${req.method} request to ${req.url}`);
-  logger.info(`Request body, ${req.body}`);
-  next();
-});
-
-//*** Homework - implement Ip based rate limiting for sensitive endpoints
-
-// (moved above)
-
 app.use(errorHandler);
 
-
+// Start server & RabbitMQ consumer
 async function startServer() {
-  await connectToRabbitMQ()
-  await consumeEvent('post.deleted',handlePostDel)
+  await connectToRabbitMQ();
 
-app.listen(PORT, () => {
+  // Subscribe to 'post.deleted' messages
+  await consumeEvent("post.deleted", async (event) => {
+    try {
+      // Clean media IDs: remove brackets/quotes if any
+      if (event.mediaIds && Array.isArray(event.mediaIds)) {
+        event.mediaIds = event.mediaIds.map((id) => id.replace(/[\[\]"]/g, ""));
+      }
+      await handlePostDel(event); // call your existing handler
+    } catch (err) {
+      logger.error("Error processing post.deleted event", err);
+    }
+  });
 
-  logger.info(`Media service running on port ${PORT}`);
-});
-
+  app.listen(PORT, () => {
+    logger.info(`Media service running on port ${PORT}`);
+  });
 }
-//unhandled promise rejection
-startServer()
+
+// Handle unhandled promise rejections
+startServer();
 process.on("unhandledRejection", (reason, promise) => {
   logger.error("Unhandled Rejection at", promise, "reason:", reason);
 });

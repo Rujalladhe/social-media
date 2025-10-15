@@ -137,13 +137,7 @@ const deleteMedia = async (req, res) => {
       });
     }
 
-    // 2️⃣ Delete from S3 using stored publicId (S3 key)
-    await deleteMediaFromS3(media.publicId);
-    logger.info(`Deleted media from S3: ${media.publicId}`);
-
-    // 3️⃣ Delete from MongoDB
-    await Media.deleteOne({ _id: id });
-    logger.info(`Deleted media record from database: ${id}`);
+   
 
     res.status(200).json({
       success: true,

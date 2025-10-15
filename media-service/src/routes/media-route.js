@@ -106,5 +106,5 @@ router.post(
     uplaodMedia
 );
 //fetch all medais upload by the authenticate user 
-router.get("/get",validateToken,getAllMedias);
+router.get("/",validateToken,getAllMedias);
 module.exports = router ;
