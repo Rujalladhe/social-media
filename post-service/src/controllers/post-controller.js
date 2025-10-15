@@ -1,5 +1,6 @@
 const logger  = require('../utils/logger')
-const Post = require('../models/post')
+const Post = require('../models/post');
+const { publishEvent } = require('../utils/rabbitmq');
 const isVlaidCache = async(req,input) =>{
      const cachedKey = `post:${input}`
      await req.redisClient.del(cachedKey);
@@ -119,11 +120,27 @@ const deletepost = async(req,res)=>{
             success:false
         })
      }
+    // Publish delete event so other services can react (use the deleted document values)
+    try {
+        const payload = {
+            postId: delPost._id.toString(),
+            userId: req.user.userId,
+            mediaIds: delPost.medialUrls || []
+        };
+        logger.info('about to publish post.deleted payload -> ' + JSON.stringify(payload));
+        await publishEvent('post.deleted', payload);
+        logger.info('published post.deleted event for post ' + delPost._id.toString());
+    } catch (pubErr) {
+        // Log publish errors but continue — the post was already deleted from DB
+        logger.error('failed to publish post.deleted event', pubErr);
+    }
+
     return res.status(202).json({
         message:"post deleted sucesfully",
         success:true,
 
-    })}
+    });
+    }
     catch(e){
         logger.error("errir in delting ",e);
         res.status(500).json({
@@ -132,7 +149,9 @@ const deletepost = async(req,res)=>{
         })
     }
 
-   
 }
+ 
+
+
 
 module.exports = {createpost,getAllPosts,getPost,deletepost}

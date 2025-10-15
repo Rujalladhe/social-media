@@ -12,124 +12,135 @@ const { validateToken } = require("./middleware/authMiddleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 const redisClient = new Redis(process.env.REDIS_URL);
 
-// Middlewares
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
 
-// Rate Limiting
+//rate limiting
 const ratelimitOptions = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
+    logger.warn(`Sensitive endpoint rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({ success: false, message: "Too many requests" });
   },
   store: new RedisStore({
     sendCommand: (...args) => redisClient.call(...args),
   }),
 });
+
 app.use(ratelimitOptions);
 
-// Request Logging
 app.use((req, res, next) => {
   logger.info(`Received ${req.method} request to ${req.url}`);
-  logger.info(`Request body: ${JSON.stringify(req.body)}`);
+  logger.info(`Request body, ${req.body}`);
   next();
 });
 
-// Proxy Setup
+const proxyOptions = {
+  proxyReqPathResolver: (req) => {
+    return req.originalUrl.replace(/^\/v1/, "/api");
+  },
+  proxyErrorHandler: (err, res, next) => {
+    logger.error(`Proxy error: ${err.message}`);
+    res.status(500).json({
+      message: `Internal server error`,
+      error: err.message,
+    });
+  },
+};
+
+//setting up proxy for our identity service
 app.use(
   "/v1/auth",
   proxy(process.env.IDENTITY_SERVICE_URL, {
-    proxyReqPathResolver: (req) => {
-      return req.originalUrl.replace(/^\/v1/, "/api");
-    },
-
-    proxyReqBodyDecorator: (bodyContent, srcReq) => {
-      return JSON.stringify(bodyContent);
-    },
-
+    ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["Content-Type"] = "application/json";
-      proxyReqOpts.headers["Content-Length"] = Buffer.byteLength(
-        JSON.stringify(srcReq.body)
-      );
       return proxyReqOpts;
     },
-
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       logger.info(
         `Response received from Identity service: ${proxyRes.statusCode}`
       );
-      return proxyResData;
-    },
 
-    proxyErrorHandler: (err, res, next) => {
-      logger.error(`Proxy error: ${err.message}`);
-      res.status(500).json({
-        message: "Internal server error",
-        error: err.message,
-      });
-      next();
+      return proxyResData;
     },
   })
 );
 
-//setting proxy for the post routes 
+//setting up proxy for our post service
 app.use(
   "/v1/posts",
   validateToken,
   proxy(process.env.POST_SERVICE_URL, {
-    proxyReqPathResolver: (req) => {
-      return req.originalUrl.replace(/^\/v1/, "/api");
-    },
-
-    proxyReqBodyDecorator: (bodyContent, srcReq) => {
-      return JSON.stringify(bodyContent);
-    },
-
+    ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["Content-Type"] = "application/json";
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
 
-      proxyReqOpts.headers["Content-Length"] = Buffer.byteLength(
-        
-        JSON.stringify(srcReq.body)
-      );
       return proxyReqOpts;
     },
-
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       logger.info(
-        `Response received from post service: ${proxyRes.statusCode}`
+        `Response received from Post service: ${proxyRes.statusCode}`
       );
-      return proxyResData;
-    },
 
-    proxyErrorHandler: (err, res, next) => {
-      logger.error(`Proxy error: ${err.message}`);
-      res.status(500).json({
-        message: "Internal server error",
-        error: err.message,
-      });
-      next();
+      return proxyResData;
     },
   })
 );
-// Error Handler
+
+//setting up proxy for our media service
+app.use(
+  "/v1/media",
+  validateToken,
+  proxy(process.env.MEDIA_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      logger.info(`Forwarding Content-Type to media: ${srcReq.headers["content-type"]}`);
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      // Preserve whatever Content-Type the client sent; do not override here.
+      const incomingContentType = srcReq.headers["content-type"];
+      if (incomingContentType) {
+        proxyReqOpts.headers["Content-Type"] = incomingContentType;
+      }
+
+      return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(
+        `Response received from media service: ${proxyRes.statusCode}`
+      );
+
+      return proxyResData;
+    },
+    parseReqBody: false,
+  })
+);
+
+// JSON parser for non-multipart routes after media proxy to avoid consuming streams
+app.use(express.json());
+
+//setting up proxy for our search service
+
+
 app.use(errorHandler);
 
-// Start Server
 app.listen(PORT, () => {
-  logger.info(`API Gateway running on port ${PORT}`);
+  logger.info(`API Gateway is running on port ${PORT}`);
   logger.info(
-    `Forwarding requests to Identity Service at ${process.env.IDENTITY_SERVICE_URL}`
+    `Identity service is running on port ${process.env.IDENTITY_SERVICE_URL}`
   );
-    logger.info(`post service is  running on port ${process.env.POST_SERVICE_URL}`);
-
+  logger.info(
+    `Post service is running on port ${process.env.POST_SERVICE_URL}`
+  );
+  logger.info(
+    `Media service is running on port ${process.env.MEDIA_SERVICE_URL}`
+  );
+  logger.info(`Redis Url ${process.env.REDIS_URL}`);
 });
