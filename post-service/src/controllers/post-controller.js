@@ -1,7 +1,7 @@
 const logger  = require('../utils/logger')
 const Post = require('../models/post');
 const { publishEvent } = require('../utils/rabbitmq');
-const isVlaidCache = async(req,input) =>{
+const isValidCache = async(req,input) =>{
      const cachedKey = `post:${input}`
      await req.redisClient.del(cachedKey);
      const keys = await req.redisClient.keys("posts:*");
@@ -10,35 +10,42 @@ const isVlaidCache = async(req,input) =>{
      }
 
 }
-const createpost =  async(req,res)=> {
-    try {
-        const {content , mediaUrls } =  req.body
-         const newPost = new Post ({
-            user:req.user.userId,
-            content,
-            medialUrls :  mediaUrls || []
-         })
+const createpost = async (req, res) => {
+  try {
+    const { content, mediaUrls, shop } = req.body;
 
-await newPost.save()
-await isVlaidCache(req,newPost._id.toString())
+    // Expecting 'shop' object to contain:
+    // shopName, ownerName, category, location, products (with name, price, imageUrl, mediaId)
+    const newPost = new Post({
+      user: req.user.userId,
+      content,
+      medialUrls: mediaUrls || [],
+      shop: shop || null
+    });
 
-logger.info("post created sucessfully")
-res.status(201).json({
-    success:true,
-    message:'post created succefully'
+    await newPost.save();
 
-})
+    // Clear cache for this post
+    if (typeof isValidCache === "function") {
+      await isValidCache(req, newPost._id.toString());
     }
-    catch(e){
-        logger.info("error in post new post",e)
-        res.status(402).json({
-            message:"error in  posting",
-            success:false
-        })
-        
 
-    }
-}
+    logger.info("Post created successfully");
+    res.status(201).json({
+      success: true,
+      message: "Post created successfully",
+      post: newPost
+    });
+
+  } catch (e) {
+    logger.error("Error creating new post", e);
+    res.status(500).json({
+      message: "Error in posting",
+      success: false
+    });
+  }
+};
+
 const getAllPosts = async(req,res)=>{
     try{
     const limit = req.query.limit||10;

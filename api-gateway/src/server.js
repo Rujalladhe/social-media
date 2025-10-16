@@ -122,6 +122,26 @@ app.use(
     parseReqBody: false,
   })
 );
+app.use(
+  "/v1/orders",
+  validateToken,
+  proxy(process.env.ORDER_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["Content-Type"] = "application/json";
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+
+      return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(
+        `Response received from ORDER service: ${proxyRes.statusCode}`
+      );
+
+      return proxyResData;
+    },
+  })
+);
 
 // JSON parser for non-multipart routes after media proxy to avoid consuming streams
 app.use(express.json());
@@ -141,6 +161,9 @@ app.listen(PORT, () => {
   );
   logger.info(
     `Media service is running on port ${process.env.MEDIA_SERVICE_URL}`
+  );
+   logger.info(
+    `ORDER service is running on port ${process.env.ORDER_SERVICE_URL}`
   );
   logger.info(`Redis Url ${process.env.REDIS_URL}`);
 });
