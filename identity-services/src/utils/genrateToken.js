@@ -10,10 +10,13 @@ const genrateToken = async (user) =>{
         {
             userId:user._id,
             username:user.username,
+            role:user.role,
+            lat:user.lat,
+            lng:user.lng
 
         },
         process.env.JWT_SECRET,
-        {expiresIn:"60m"}
+        {expiresIn:"100m"}
     );
 //refreshtoken is sotred in db for large time 
     const refreshToken = crypto.randomBytes(40).toString("hex");

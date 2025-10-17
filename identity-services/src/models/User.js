@@ -27,7 +27,23 @@ const userSchema = new mongoose.Schema(
         createdAt:{
             type:Date,
             default:Date.now,
+        },
+        role:{
+            enum:["user","vendor","rider"],
+            type:String,
+            default:"user",
+        },
+        lat:{
+            type:Number,
+            default:0,
+            required:false,
+        },
+        lng:{
+            type:Number,
+            default:0,
+            required:false,
         }
+      
     }
 );
 
