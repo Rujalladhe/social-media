@@ -1,0 +1,5 @@
+Start-Process "cmd.exe" -ArgumentList '/k cd rider-service && npm run dev'
+Start-Process "cmd.exe" -ArgumentList '/k cd order-service && npm run dev'
+Start-Process "cmd.exe" -ArgumentList '/k cd media-service && npm run dev'
+Start-Process "cmd.exe" -ArgumentList '/k cd identity-services && npm run dev'
+Start-Process "cmd.exe" -ArgumentList '/k cd api-gateway && npm run dev'

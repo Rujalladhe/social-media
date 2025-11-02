@@ -1,40 +1,36 @@
-const io = require("socket.io-client");
-const jwt = require("jsonwebtoken");
+// testRiderSocketClient.js
+const { io } = require("socket.io-client");
 
-// Replace with JWT from identity service login
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGYxYTE3ZGU3NDUzMDI0MWE5NzQ1ZmIiLCJ1c2VybmFtZSI6InJpZGUxIiwicm9sZSI6InJpZGVyIiwibGF0IjoxMjMyMzIsImxuZyI6Nzg5MCwiaWF0IjoxNzYwNjY2MDIxLCJleHAiOjE3NjA2NzIwMjF9.Z5hecA8Jje1_e5oX7rIQ1n2FoSWh2NlI95z-X3ZGKo4";
+// ======= CONFIG =======
+const SERVER_URL = "http://localhost:5000"; // your socket server
+const JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTAyOWY1MmExNjQzY2E1M2ZjMzgxNGIiLCJ1c2VybmFtZSI6InJpZGUyIiwicm9sZSI6InJpZGVyIiwibGF0IjoxMjMyMzIsImxuZyI6Nzg5MCwiaWF0IjoxNzYxNzg0NDY0LCJleHAiOjE3NjE3OTA0NjR9.AJyxe_K8n2Y-21CQyIJqUJqwQ3tF02R_VpkLRCdPaWU"; // e.g., from login response
 
-// Connect to Rider service
-const socket = io("http://localhost:3009");
+// ======= CONNECT TO SOCKET SERVER =======
+const socket = io(SERVER_URL, {
+  auth: { token: JWT_TOKEN },
+  transports: ["websocket"],
+});
 
 socket.on("connect", () => {
-  console.log("[Client] Connected to Rider Service:", socket.id);
+  console.log("[Socket] Connected to server");
 
-  // Authenticate rider
-  socket.emit("authenticate", { token });
-
-  // Listen for authentication response
-  socket.on("authenticated", (data) => {
-    console.log("[Client] Authenticated as Rider:", data.riderId);
-
-    // Send location updates every 10 sec
-    setInterval(() => {
-      const lat = 18.52 + Math.random() * 0.01;   // just for testing
-      const long = 73.85 + Math.random() * 0.01;
-      socket.emit("locationUpdate", { latitude: lat, longitude: long, available: true });
-      console.log(`[Client] Sent location: ${lat}, ${long}`);
-    }, 10000);
-  });
-
-  socket.on("riderUpdated", (rider) => {
-    console.log("[Client] Rider Updated:", rider);
-  });
-
-  socket.on("error", (err) => {
-    console.error("[Client] Error:", err);
-  });
+  // Simulate rider location updates every 5 seconds
+  setInterval(() => {
+    const data = {
+      latitude: 18.5204 + Math.random() * 0.01,
+      longitude: 73.8567 + Math.random() * 0.01,
+      available: true,
+      token: JWT_TOKEN,
+    };
+    socket.emit("riderLocationUpdate", data);
+    console.log("[Socket] Sent location:", data);
+  }, 5000);
 });
 
 socket.on("disconnect", () => {
-  console.log("[Client] Disconnected from server");
+  console.log("[Socket] Disconnected from server");
+});
+
+socket.on("connect_error", (err) => {
+  console.error("[Socket] Connection error:", err.message);
 });

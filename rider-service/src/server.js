@@ -2,91 +2,95 @@ const express = require("express");
 const http = require("http");
 const mongoose = require("mongoose");
 const socketIo = require("socket.io");
-const jwt = require("jsonwebtoken");
 const Rider = require("./models/rider");
+const rideRoute = require("./routes/ride-route");
+const { connectProducer, sendRiderLocation } = require("./kafka/riderProducer");
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-// MongoDB connection
-mongoose.connect("mongodb+srv://rujalladhe21:4i5XD37NI99oVeTx@cluster0.tp2huqb.mongodb.net/?retryWrites=true&w=majority", {})
-  .then(() => console.log("[Server] MongoDB connected"))
-  .catch(err => console.error("[Server] MongoDB connection error:", err));
+// Middleware
+app.use(express.json());
 
-// Server listening
-server.listen(3009, () => console.log("[Server] Rider Service running on port 3009"));
+// Routes
+app.use('/riders', rideRoute);
 
-// Socket.IO connection
+// MongoDB
+mongoose
+  .connect("mongodb+srv://rujalladhe21:4i5XD37NI99oVeTx@cluster0.tp2huqb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("[MongoDB] Connected"))
+
+  .catch((err) => console.error("[MongoDB] Connection error:", err));
+
+// Kafka Producer
+connectProducer();
+
+// Express Test Endpoint
+app.get("/", (req, res) => res.send("Rider Service Running"));
 io.on("connection", (socket) => {
-  console.log("[Socket.IO] Client connected:", socket.id);
+  console.log("[Socket.IO] Rider connected:", socket.id);
 
-  // Authenticate rider on connection
-  socket.on("authenticate", async ({ token }) => {
+  // Instead of registering a new rider, accept riderId from client
+  socket.on("registerRider", async (data) => {
+    const { riderId } = data; // client sends existing riderId
     try {
-      if (!token) {
-        socket.emit("error", { message: "Token missing" });
-        return socket.disconnect();
-      }
-
-      const decoded = jwt.verify(token, "rujal ladhe");
-      // Only allow riders
-      if (!decoded || decoded.role !== "rider") {
-        socket.emit("error", { message: "Unauthorized" });
-        return socket.disconnect();
-      }
-
-      // Save riderId on socket
-      socket.riderId = decoded.userId;
-
-      // Check if rider exists in DB, create if not
-      let rider = await Rider.findOne({ userId: socket.riderId });
+      const rider = await Rider.findById(riderId);
       if (!rider) {
-        rider = await Rider.create({ userId: socket.riderId, name: decoded.username });
-        console.log("[Socket.IO] New rider created:", rider._id);
-      } else {
-        console.log("[Socket.IO] Rider authenticated:", rider._id);
+        console.warn("[Socket.IO] Rider not found:", riderId);
+        socket.emit("error", { message: "Rider not found" });
+        return;
       }
 
-      socket.emit("authenticated", { riderId: rider._id });
-
+      socket.riderId = rider._id; // save riderId for future updates
+      console.log("[Socket.IO] Rider connected with ID:", rider._id);
+      socket.emit("riderRegistered", { riderId: rider._id });
     } catch (err) {
-      console.error("[Socket.IO] Auth error:", err.message);
-      socket.emit("error", { message: "Authentication failed" });
-      socket.disconnect();
+      console.error("[Socket.IO] Error finding rider:", err);
+      socket.emit("error", { message: "Registration failed" });
     }
   });
 
-  // Location updates
-  socket.on("locationUpdate", async ({ latitude, longitude, available }) => {
+  // Location Updates
+  socket.on("locationUpdate", async (data) => {
     if (!socket.riderId) {
-      console.warn("[Socket.IO] Location update without authentication");
+      console.warn("[Socket.IO] Rider not registered yet");
       return;
     }
 
+    const { latitude, longitude, available } = data;
+
     try {
-      const rider = await Rider.findOneAndUpdate(
-        { userId: socket.riderId },
-        { latitude, longitude, available, lastUpdated: new Date() },
+      const rider = await Rider.findByIdAndUpdate(
+        socket.riderId,
+        { latitude, longitude, available },
         { new: true }
       );
 
       if (!rider) {
-        console.warn("[Socket.IO] Rider not found for update:", socket.riderId);
+        console.warn("[MongoDB] Rider not found for update:", socket.riderId);
         return;
       }
 
-      console.log(`[Socket.IO] Rider ${rider._id} location updated:`, latitude, longitude);
+      console.log("[MongoDB] Rider location updated:", rider._id, latitude, longitude);
 
-      // Broadcast to other clients (if needed)
+      // Send to Kafka
+      await sendRiderLocation({ riderId: rider._id, latitude, longitude, available });
+
+      // Broadcast to all clients
       io.emit("riderUpdated", rider);
-
     } catch (err) {
-      console.error("[Socket.IO] Error updating rider location:", err);
+      console.error("[Socket.IO] Error updating location:", err);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("[Socket.IO] Client disconnected:", socket.id);
+    console.log("[Socket.IO] Rider disconnected:", socket.id);
   });
+});
+
+// Start server
+const PORT = process.env.PORT || 3010;
+server.listen(PORT, () => {
+  console.log(`[Server] Rider service listening on port ${PORT}`);
 });
