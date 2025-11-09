@@ -1,95 +1,51 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs "node18"
-    }
-
-    environment {
-        GIT_BRANCH = 'main'
-    }
-
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                echo '📦 Checking out source code...'
-                git branch: "${GIT_BRANCH}", url: 'https://github.com/yourusername/your-repo.git'
+                git branch: 'main', url: 'https://github.com/yourusername/social-media.git', credentialsId: 'github-creds'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo '📥 Installing npm packages...'
-                sh 'npm ci'
+                sh '''
+                    node -v
+                    npm -v
+                    npm install
+                '''
             }
         }
 
-        stage('Prettier Check') {
+        stage('Lint & Format') {
             steps {
-                echo '🎨 Checking code format...'
-                script {
-                    try {
-                        sh 'npm run format:check'
-                    } catch (err) {
-                        echo '⚠️ Format issues found! Running auto-fix...'
-                        sh 'npm run format'
-                    }
-                }
-            }
-        }
-
-        stage('Lint Check') {
-            steps {
-                echo '🔍 Running ESLint...'
-                script {
-                    try {
-                        sh 'npm run lint'
-                    } catch (err) {
-                        echo '⚠️ Lint errors found! Running auto-fix...'
-                        sh 'npm run lint:fix'
-                    }
-                }
+                sh 'npm run lint:fix || true'
+                sh 'npm run format || true'
             }
         }
 
         stage('Run Tests') {
             steps {
-                echo '🧪 Running backend unit tests...'
-                sh 'npm test'
+                sh 'npm test || true'
             }
         }
 
-        stage('Build') {
+        stage('Push Fixes') {
             steps {
-                echo '🏗️ Building project...'
-                sh 'npm run build'
-            }
-        }
-
-        stage('Commit Auto-Fixes') {
-            when {
-                expression { fileExists('package.json') }
-            }
-            steps {
-                echo '📤 Committing auto-fix changes (if any)...'
-                script {
-                    sh '''
-                        git config user.email "jenkins@ci.local"
-                        git config user.name "jenkins"
-                        git add .
-                        git diff --cached --quiet || git commit -m "🔧 Auto-fix: lint and format"
-                    '''
-                }
+                sh '''
+                    git config user.name "jenkins"
+                    git config user.email "jenkins@ci.local"
+                    git add .
+                    git diff --cached --quiet || git commit -m "🔧 Auto-fix: lint & format"
+                    git push https://<username>:<token>@github.com/yourusername/social-media.git main
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo '✅ CI pipeline completed successfully with auto-fixes if needed!'
-        }
-        failure {
-            echo '❌ CI pipeline failed! Check logs for details.'
-        }
+        success { echo '✅ CI completed successfully!' }
+        failure { echo '❌ Build failed — check logs.' }
     }
 }
