@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const riderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true }, // link to identity service
@@ -10,5 +10,5 @@ const riderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-const Rider = mongoose.model("Rider", riderSchema);
+const Rider = mongoose.model('Rider', riderSchema);
 module.exports = Rider;

@@ -1,11 +1,11 @@
-const Joi = require("joi");
+const Joi = require('joi');
 
 const validateRegistration = (data) => {
   const schema = Joi.object({
     username: Joi.string().min(3).max(50).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
-    role: Joi.string().valid("user", "rider", "vendor").default("user"),
+    role: Joi.string().valid('user', 'rider', 'vendor').default('user'),
     lat: Joi.number().optional(),
     lng: Joi.number().optional(),
   });
@@ -17,7 +17,7 @@ const validatelogin = (data) => {
   const schema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
-    role: Joi.string().valid("user", "rider", "vendor").default("user"),
+    role: Joi.string().valid('user', 'rider', 'vendor').default('user'),
     lat: Joi.number().optional(),
     lng: Joi.number().optional(),
   });
