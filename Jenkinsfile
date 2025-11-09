@@ -5,9 +5,12 @@ pipeline {
         GIT_REPO_URL = 'https://github.com/Rujalladhe/social-media.git'
         GIT_BRANCH = 'main'
         GIT_CREDENTIAL_ID = 'github-creds'
+        GITHUB_USER = 'Rujalladhe'              // your GitHub username
+        GITHUB_TOKEN = credentials('github-creds') // uses Jenkins stored credential securely
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 echo '📦 Checking out source code from GitHub...'
@@ -15,35 +18,30 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Verify Node Environment') {
             steps {
-                echo '📥 Installing project dependencies...'
+                echo '🔍 Checking Node.js & npm versions...'
                 sh '''
                     node -v
                     npm -v
-                    npm install
                 '''
             }
         }
 
-        stage('Code Format & Lint Check') {
+        stage('Install Dependencies') {
             steps {
-                echo '🎨 Running Prettier and ESLint checks...'
-                script {
-                    try {
-                        sh 'npm run format:check'
-                    } catch (err) {
-                        echo '⚠️ Format issues found. Auto-fixing...'
-                        sh 'npm run format || true'
-                    }
+                echo '📥 Installing dependencies...'
+                sh 'npm install'
+            }
+        }
 
-                    try {
-                        sh 'npm run lint'
-                    } catch (err) {
-                        echo '⚠️ Lint issues found. Auto-fixing...'
-                        sh 'npm run lint:fix || true'
-                    }
-                }
+        stage('Auto Fix & Lint') {
+            steps {
+                echo '🎨 Running Prettier & ESLint auto-fix...'
+                sh '''
+                    npm run format || true
+                    npm run lint:fix || true
+                '''
             }
         }
 
@@ -54,19 +52,19 @@ pipeline {
             }
         }
 
-        stage('Commit and Push Auto-Fixes') {
+        stage('Push Auto-Fixes to GitHub') {
             steps {
-                echo '📤 Checking for code fixes to commit...'
+                echo '📤 Committing & pushing any auto-fixes...'
                 script {
                     sh '''
-                        git config user.email "jenkins@ci.local"
                         git config user.name "jenkins"
+                        git config user.email "jenkins@ci.local"
                         git add .
                         if ! git diff --cached --quiet; then
                             git commit -m "🔧 Auto-fix: lint & format corrections [ci skip]"
                             git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/Rujalladhe/social-media.git ${GIT_BRANCH}
                         else
-                            echo "✅ No changes to push."
+                            echo "✅ No changes to commit."
                         fi
                     '''
                 }
@@ -79,7 +77,7 @@ pipeline {
             echo '✅ CI pipeline completed successfully!'
         }
         failure {
-            echo '❌ CI pipeline failed! Check the logs for details.'
+            echo '❌ Build failed. Check logs for errors.'
         }
     }
 }
