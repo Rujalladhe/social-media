@@ -97,10 +97,10 @@ const run = async () => {
 
         // === Update Redis GEO index ===
         await redis.geoadd(
-          'riders:geo',       // name of the geo index
-          longitude,          // lon first
-          latitude,           // lat second
-          `rider:${riderId}`  // unique member name
+          'riders:geo', // name of the geo index
+          longitude, // lon first
+          latitude, // lat second
+          `rider:${riderId}` // unique member name
         );
 
         logger.log(`[Redis GEO] Updated Geo index for rider: ${riderId}`);
