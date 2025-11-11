@@ -65,7 +65,7 @@ const run = async () => {
   logger.log('[Kafka] Consumer connected');
 
   await consumer.subscribe({ topic: 'rider-locations', fromBeginning: false });
-  logger.log('[Kafka] Subscribed to rider-locations topic');
+  logger.log('[Kafka] Subscribed to rider-locationss topic');
 
   await consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
