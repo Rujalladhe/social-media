@@ -1,0 +1,6 @@
+{
+  "riderId": "rider123",
+  "available": true,
+  "location": { "lat": 18.5204, "lon": 73.8567 },
+  "updatedAt": "2025-11-09T12:00:00Z"
+}

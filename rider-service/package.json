@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@elastic/elasticsearch": "^8.19.1",
     "amqplib": "^0.10.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

@@ -1,0 +1,10 @@
+{
+  "mappings": {
+    "properties": {
+      "riderId": { "type": "keyword" },
+      "available": { "type": "boolean" },
+      "location": { "type": "geo_point" },
+      "updatedAt": { "type": "date" }
+    }
+  }
+}
