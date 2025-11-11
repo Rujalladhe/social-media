@@ -75,7 +75,7 @@ const run = async () => {
 
         // Update MongoDB
         const rider = await Rider.findOneAndUpdate(
-          { userId: riderId }, // finds the document where userId == riderId
+          { userId: riderId }, // finds the document where userId == riderIdd
           { latitude, longitude, available }, // updates these fields
           { new: true } // returns the updated document instead of the old one
         );
