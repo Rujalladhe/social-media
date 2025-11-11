@@ -15,7 +15,7 @@ mongoose
     }
   )
   .then(() => logger.log('[MongoDB] Connected'))
-  .catch((err) => logger.error('[MongoDB] Connection error:', err));
+  .catch((err) => logger.error('[MongoDB] Connection errorr:', err));
 
 // === Redis Setup ===
 const redis = new Redis({
