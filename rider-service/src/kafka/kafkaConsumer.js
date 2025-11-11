@@ -22,13 +22,13 @@ const redis = new Redis({
   host: '127.0.0.1',
   port: 6379,
 });
-redis.on("connect", () => logger.log("[Redis] Connected"));
+redis.on('connect', () => logger.log('[Redis] Connected'));
 
 // === Elasticsearch Setup ===
-const esClient = new Client({ node: "http://localhost:9200" });
+const esClient = new Client({ node: 'http://localhost:9200' });
 
 async function setupElasticsearchIndex() {
-  const indexName = "riders";
+  const indexName = 'riders';
   const exists = await esClient.indices.exists({ index: indexName });
   if (!exists) {
     await esClient.indices.create({
@@ -36,17 +36,17 @@ async function setupElasticsearchIndex() {
       body: {
         mappings: {
           properties: {
-            riderId: { type: "keyword" },
-            available: { type: "boolean" },
-            location: { type: "geo_point" },
-            updatedAt: { type: "date" },
+            riderId: { type: 'keyword' },
+            available: { type: 'boolean' },
+            location: { type: 'geo_point' },
+            updatedAt: { type: 'date' },
           },
         },
       },
     });
     logger.log(`[Elasticsearch] Created index: ${indexName}`);
   } else {
-    logger.log("[Elasticsearch] Index already exists");
+    logger.log('[Elasticsearch] Index already exists');
   }
 }
 
@@ -85,9 +85,7 @@ const run = async () => {
           return;
         }
 
-        logger.log(
-          `[MongoDB] Rider updated: ${riderId} | Lat: ${latitude}, Long: ${longitude}`
-        );
+        logger.log(`[MongoDB] Rider updated: ${riderId} | Lat: ${latitude}, Long: ${longitude}`);
 
         // === Update Redis (for quick access) ===
         await redis.hmset(`rider:${riderId}`, {
@@ -100,7 +98,7 @@ const run = async () => {
 
         // === Update Elasticsearch (for geo search) ===
         await esClient.index({
-          index: "riders",
+          index: 'riders',
           id: riderId,
           body: {
             riderId,
