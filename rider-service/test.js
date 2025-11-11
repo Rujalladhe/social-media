@@ -4,7 +4,7 @@ const { io } = require('socket.io-client');
 // ======= CONFIG =======
 const SERVER_URL = 'http://localhost:5000'; // your socket server
 const JWT_TOKEN =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTAyOWY1MmExNjQzY2E1M2ZjMzgxNGIiLCJ1c2VybmFtZSI6InJpZGUyIiwicm9sZSI6InJpZGVyIiwibGF0IjoxMjMyMzIsImxuZyI6Nzg5MCwiaWF0IjoxNzYxNzg0NDY0LCJleHAiOjE3NjE3OTA0NjR9.AJyxe_K8n2Y-21CQyIJqUJqwQ3tF02R_VpkLRCdPaWU'; // e.g., from login response
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTAyOWY1MmExNjQzY2E1M2ZjMzgxNGIiLCJ1c2VybmFtZSI6InJpZGUyIiwicm9sZSI6InJpZGVyIiwibGF0IjoxMjMyMzIsImxuZyI6Nzg5MCwiaWF0IjoxNzYyODI5NjcwLCJleHAiOjE3NjI4MzU2NzB9.W_rbW84UljWCBVjwZUnzKJsTXkaEHgpCCg7elk6NUDg'; // e.g., from login response
 
 // ======= CONNECT TO SOCKET SERVER =======
 const socket = io(SERVER_URL, {

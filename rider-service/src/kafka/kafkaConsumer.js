@@ -1,11 +1,11 @@
-// consumer.js
 const { Kafka } = require('kafkajs');
 const mongoose = require('mongoose');
 const Redis = require('ioredis');
+const { Client } = require('@elastic/elasticsearch');
 const Rider = require('../models/rider'); // Your Rider model
-const logger = console; // Replace with your logger if you have one
+const logger = console;
 
-// === MongoDB setup ===
+// === MongoDB Setup ===
 mongoose
   .connect(
     'mongodb+srv://rujalladhe21:4i5XD37NI99oVeTx@cluster0.tp2huqb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
@@ -15,7 +15,7 @@ mongoose
     }
   )
   .then(() => logger.log('[MongoDB] Connected'))
-  .catch((err) => logger.error('[MongoDB] Connection errorr:', err));
+  .catch((err) => logger.error('[MongoDB] Connection error:', err));
 
 // === Redis Setup ===
 const redis = new Redis({
@@ -53,19 +53,19 @@ async function setupElasticsearchIndex() {
 // === Kafka Setup ===
 const kafka = new Kafka({
   clientId: 'rider-consumer',
-  brokers: ['localhost:9092'], // Replace with your Kafka broker addresses
+  brokers: ['localhost:9092'],
 });
 
 const consumer = kafka.consumer({ groupId: 'rider-location-group' });
 
 // === Main Consumer Logic ===
 const run = async () => {
-  await setupElasticsearchIndex(); // ensure index is ready
+  await setupElasticsearchIndex();
   await consumer.connect();
   logger.log('[Kafka] Consumer connected');
 
   await consumer.subscribe({ topic: 'rider-locations', fromBeginning: false });
-  logger.log('[Kafka] Subscribed to rider-locationss topicc');
+  logger.log('[Kafka] Subscribed to rider-locations topic');
 
   await consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
@@ -73,11 +73,11 @@ const run = async () => {
         const data = JSON.parse(message.value.toString());
         const { riderId, latitude, longitude, available } = data;
 
-        // Update MongoDB
+        // === Update MongoDB ===
         const rider = await Rider.findOneAndUpdate(
-          { userId: riderId }, // finds the document where userId == riderIdd
-          { latitude, longitude, available }, // updates these fields
-          { new: true } // returns the updated document instead of the old one
+          { userId: riderId },
+          { latitude, longitude, available },
+          { new: true }
         );
 
         if (!rider) {
@@ -87,16 +87,25 @@ const run = async () => {
 
         logger.log(`[MongoDB] Rider updated: ${riderId} | Lat: ${latitude}, Long: ${longitude}`);
 
-        // === Update Redis (for quick access) ===
+        // === Update Redis Hash (for direct info access) ===
         await redis.hmset(`rider:${riderId}`, {
           latitude,
           longitude,
           available: available ? 1 : 0,
+          updatedAt: new Date().toISOString(),
         });
 
-        logger.log(`[Redis] Rider location updated: rider:${riderId}`);
+        // === Update Redis GEO index ===
+        await redis.geoadd(
+          'riders:geo',       // name of the geo index
+          longitude,          // lon first
+          latitude,           // lat second
+          `rider:${riderId}`  // unique member name
+        );
 
-        // === Update Elasticsearch (for geo search) ===
+        logger.log(`[Redis GEO] Updated Geo index for rider: ${riderId}`);
+
+        // === Update Elasticsearch (for analytics or advanced geo search) ===
         await esClient.index({
           index: 'riders',
           id: riderId,

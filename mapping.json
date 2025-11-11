@@ -1,10 +1,31 @@
 {
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1
+  },
   "mappings": {
+    "dynamic_templates": [
+      {
+        "strings_as_keywords": {
+          "match_mapping_type": "string",
+          "mapping": { "type": "keyword" }
+        }
+      }
+    ],
     "properties": {
-      "riderId": { "type": "keyword" },
-      "available": { "type": "boolean" },
-      "location": { "type": "geo_point" },
-      "updatedAt": { "type": "date" }
+      "riderId": {
+        "type": "keyword"
+      },
+      "available": {
+        "type": "boolean"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
     }
   }
 }
