@@ -21,6 +21,7 @@
     "ioredis": "^5.4.2",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "mongoose": "^8.9.2",
     "winston": "^3.17.0"
   },
