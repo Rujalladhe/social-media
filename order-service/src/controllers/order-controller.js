@@ -1,19 +1,13 @@
-const Order = require("../models/order");
-const sqs = require("../utils/sqsclient");
+const Order = require('../models/order');
+const sqs = require('../utils/sqsclient');
 
 exports.createOrder = async (req, res) => {
   try {
-    const { 
-      userId, 
-      items, 
-      totalAmount, 
-      pickupLocation, 
-      deliveryLocation 
-    } = req.body;
+    const { userId, items, totalAmount, pickupLocation, deliveryLocation } = req.body;
 
     // ✅ Validate required fields
     if (!userId || !items || !totalAmount || !pickupLocation || !deliveryLocation) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // ✅ Save order in MongoDB
@@ -40,14 +34,14 @@ exports.createOrder = async (req, res) => {
 
     await sqs.sendMessage(params).promise();
 
-    console.log("✅ Order sent to SQS:", order._id);
+    console.log('✅ Order sent to SQS:', order._id);
 
     res.status(201).json({
-      message: "Order created successfully and sent to SQS",
+      message: 'Order created successfully and sent to SQS',
       order,
     });
   } catch (error) {
-    console.error("❌ Error creating order:", error);
-    res.status(500).json({ error: "Failed to create order" });
+    console.error('❌ Error creating order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
   }
 };

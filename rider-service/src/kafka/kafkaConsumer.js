@@ -1,23 +1,25 @@
 // consumer.js
-const { Kafka } = require("kafkajs");
-const mongoose = require("mongoose");
-const Redis = require("ioredis");
-const { Client } = require("@elastic/elasticsearch");
-const Rider = require("../models/rider"); // Your Rider model
-const logger = console; // Replace with a better logger (e.g. winston) if needed
+const { Kafka } = require('kafkajs');
+const mongoose = require('mongoose');
+const Redis = require('ioredis');
+const Rider = require('../models/rider'); // Your Rider model
+const logger = console; // Replace with your logger if you have one
 
-// === MongoDB Setup ===
+// === MongoDB setup ===
 mongoose
   .connect(
-    "mongodb+srv://rujalladhe21:4i5XD37NI99oVeTx@cluster0.tp2huqb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
-    { useNewUrlParser: true, useUnifiedTopology: true }
+    'mongodb+srv://rujalladhe21:4i5XD37NI99oVeTx@cluster0.tp2huqb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
   )
-  .then(() => logger.log("[MongoDB] Connected"))
-  .catch((err) => logger.error("[MongoDB] Connection error:", err));
+  .then(() => logger.log('[MongoDB] Connected'))
+  .catch((err) => logger.error('[MongoDB] Connection error:', err));
 
 // === Redis Setup ===
 const redis = new Redis({
-  host: "127.0.0.1",
+  host: '127.0.0.1',
   port: 6379,
 });
 redis.on("connect", () => logger.log("[Redis] Connected"));
@@ -50,20 +52,20 @@ async function setupElasticsearchIndex() {
 
 // === Kafka Setup ===
 const kafka = new Kafka({
-  clientId: "rider-consumer",
-  brokers: ["localhost:9092"], // Replace with your Kafka broker addresses
+  clientId: 'rider-consumer',
+  brokers: ['localhost:9092'], // Replace with your Kafka broker addresses
 });
 
-const consumer = kafka.consumer({ groupId: "rider-location-group" });
+const consumer = kafka.consumer({ groupId: 'rider-location-group' });
 
 // === Main Consumer Logic ===
 const run = async () => {
   await setupElasticsearchIndex(); // ensure index is ready
   await consumer.connect();
-  logger.log("[Kafka] Consumer connected");
+  logger.log('[Kafka] Consumer connected');
 
-  await consumer.subscribe({ topic: "rider-locations", fromBeginning: false });
-  logger.log("[Kafka] Subscribed to rider-locations topic");
+  await consumer.subscribe({ topic: 'rider-locations', fromBeginning: false });
+  logger.log('[Kafka] Subscribed to rider-locations topic');
 
   await consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
@@ -71,11 +73,11 @@ const run = async () => {
         const data = JSON.parse(message.value.toString());
         const { riderId, latitude, longitude, available } = data;
 
-        // === Update MongoDB ===
+        // Update MongoDB
         const rider = await Rider.findOneAndUpdate(
-          { userId: riderId },
-          { latitude, longitude, available },
-          { new: true }
+          { userId: riderId }, // finds the document where userId == riderId
+          { latitude, longitude, available }, // updates these fields
+          { new: true } // returns the updated document instead of the old one
         );
 
         if (!rider) {
@@ -110,10 +112,10 @@ const run = async () => {
 
         logger.log(`[Elasticsearch] Rider indexed: ${riderId}`);
       } catch (err) {
-        logger.error("[Consumer] Error processing message:", err);
+        logger.error('[Consumer] Error processing message:', err);
       }
     },
   });
 };
 
-run().catch((err) => logger.error("[Consumer] Fatal error:", err));
+run().catch((err) => logger.error('[Consumer] Fatal error:', err));

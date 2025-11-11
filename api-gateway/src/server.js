@@ -1,14 +1,14 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const Redis = require("ioredis");
-const helmet = require("helmet");
-const { rateLimit } = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
-const logger = require("./utils/logger");
-const proxy = require("express-http-proxy");
-const errorHandler = require("./middleware/errorhandler");
-const { validateToken } = require("./middleware/authMiddleware");
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const Redis = require('ioredis');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
+const { RedisStore } = require('rate-limit-redis');
+const logger = require('./utils/logger');
+const proxy = require('express-http-proxy');
+const errorHandler = require('./middleware/errorhandler');
+const { validateToken } = require('./middleware/authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +26,7 @@ const ratelimitOptions = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => {
     logger.warn(`Sensitive endpoint rate limit exceeded for IP: ${req.ip}`);
-    res.status(429).json({ success: false, message: "Too many requests" });
+    res.status(429).json({ success: false, message: 'Too many requests' });
   },
   store: new RedisStore({
     sendCommand: (...args) => redisClient.call(...args),
@@ -43,7 +43,7 @@ app.use((req, res, next) => {
 
 const proxyOptions = {
   proxyReqPathResolver: (req) => {
-    return req.originalUrl.replace(/^\/v1/, "/api");
+    return req.originalUrl.replace(/^\/v1/, '/api');
   },
   proxyErrorHandler: (err, res, next) => {
     logger.error(`Proxy error: ${err.message}`);
@@ -56,17 +56,15 @@ const proxyOptions = {
 
 //setting up proxy for our identity service
 app.use(
-  "/v1/auth",
+  '/v1/auth',
   proxy(process.env.IDENTITY_SERVICE_URL, {
     ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers["Content-Type"] = "application/json";
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
       return proxyReqOpts;
     },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(
-        `Response received from Identity service: ${proxyRes.statusCode}`
-      );
+      logger.info(`Response received from Identity service: ${proxyRes.statusCode}`);
 
       return proxyResData;
     },
@@ -75,20 +73,18 @@ app.use(
 
 //setting up proxy for our post service
 app.use(
-  "/v1/posts",
+  '/v1/posts',
   validateToken,
   proxy(process.env.POST_SERVICE_URL, {
     ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers["Content-Type"] = "application/json";
-      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
+      proxyReqOpts.headers['x-user-id'] = srcReq.user.userId;
 
       return proxyReqOpts;
     },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(
-        `Response received from Post service: ${proxyRes.statusCode}`
-      );
+      logger.info(`Response received from Post service: ${proxyRes.statusCode}`);
 
       return proxyResData;
     },
@@ -97,25 +93,23 @@ app.use(
 
 //setting up proxy for our media service
 app.use(
-  "/v1/media",
+  '/v1/media',
   validateToken,
   proxy(process.env.MEDIA_SERVICE_URL, {
     ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      logger.info(`Forwarding Content-Type to media: ${srcReq.headers["content-type"]}`);
-      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      logger.info(`Forwarding Content-Type to media: ${srcReq.headers['content-type']}`);
+      proxyReqOpts.headers['x-user-id'] = srcReq.user.userId;
       // Preserve whatever Content-Type the client sent; do not override here.
-      const incomingContentType = srcReq.headers["content-type"];
+      const incomingContentType = srcReq.headers['content-type'];
       if (incomingContentType) {
-        proxyReqOpts.headers["Content-Type"] = incomingContentType;
+        proxyReqOpts.headers['Content-Type'] = incomingContentType;
       }
 
       return proxyReqOpts;
     },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(
-        `Response received from media service: ${proxyRes.statusCode}`
-      );
+      logger.info(`Response received from media service: ${proxyRes.statusCode}`);
 
       return proxyResData;
     },
@@ -123,20 +117,18 @@ app.use(
   })
 );
 app.use(
-  "/v1/orders",
+  '/v1/orders',
   validateToken,
   proxy(process.env.ORDER_SERVICE_URL, {
     ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers["Content-Type"] = "application/json";
-      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
+      proxyReqOpts.headers['x-user-id'] = srcReq.user.userId;
 
       return proxyReqOpts;
     },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(
-        `Response received from ORDER service: ${proxyRes.statusCode}`
-      );
+      logger.info(`Response received from ORDER service: ${proxyRes.statusCode}`);
 
       return proxyResData;
     },
@@ -148,22 +140,13 @@ app.use(express.json());
 
 //setting up proxy for our search service
 
-
 app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`API Gateway is running on port ${PORT}`);
-  logger.info(
-    `Identity service is running on port ${process.env.IDENTITY_SERVICE_URL}`
-  );
-  logger.info(
-    `Post service is running on port ${process.env.POST_SERVICE_URL}`
-  );
-  logger.info(
-    `Media service is running on port ${process.env.MEDIA_SERVICE_URL}`
-  );
-   logger.info(
-    `ORDER service is running on port ${process.env.ORDER_SERVICE_URL}`
-  );
+  logger.info(`Identity service is running on port ${process.env.IDENTITY_SERVICE_URL}`);
+  logger.info(`Post service is running on port ${process.env.POST_SERVICE_URL}`);
+  logger.info(`Media service is running on port ${process.env.MEDIA_SERVICE_URL}`);
+  logger.info(`ORDER service is running on port ${process.env.ORDER_SERVICE_URL}`);
   logger.info(`Redis Url ${process.env.REDIS_URL}`);
 });

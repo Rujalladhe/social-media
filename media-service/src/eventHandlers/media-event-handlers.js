@@ -23,7 +23,7 @@ const handlePostDel = async (event) => {
   }
 
   // Clean IDs to remove extra brackets and quotes
-  const cleanIds = mediaIds.map(id => String(id).replace(/[\[\]"]+/g, ''));
+  const cleanIds = mediaIds.map((id) => String(id).replace(/[\[\]"]+/g, ''));
 
   // Fetch media docs from DB
   const todeleteMedias = await Media.find({ _id: { $in: cleanIds } });

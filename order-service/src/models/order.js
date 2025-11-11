@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
   userId: {
@@ -34,7 +34,7 @@ const orderSchema = new mongoose.Schema({
   // 📦 Order status
   status: {
     type: String,
-    default: "PENDING", // PENDING -> ASSIGNED -> PICKED_UP -> DELIVERED
+    default: 'PENDING', // PENDING -> ASSIGNED -> PICKED_UP -> DELIVERED
   },
 
   createdAt: {
@@ -43,4 +43,4 @@ const orderSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Order", orderSchema);
+module.exports = mongoose.model('Order', orderSchema);
