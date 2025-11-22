@@ -11,11 +11,11 @@ const run = async () => {
   await consumer.connect();
   await consumer.subscribe({ topic: 'order.created', fromBeginning: false });
 
-  console.log("🚀 Dispatch consumer running...");
+  console.log('🚀 Dispatch consumer running...');
 
   await consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
-      console.log("📩 Received order event:", {
+      console.log('📩 Received order event:', {
         partition,
         offset: message.offset,
         value: message.value.toString(),
